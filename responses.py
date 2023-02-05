@@ -1,15 +1,18 @@
 import random
 
 def handle_response(message):
-    p_message=message.lower()
+    print(message)
 
-    if p_message=='hello':
+    if message == 'hello':
         return 'sup'
     
-    if p_message=='roll':
+    if message == 'roll':
         return str(random.randint(1, 4))
     
-    if p_message=='!help':
+    if message == 'help':
         return '`This is ur help`'
+    
+    if message == 'buniii':
+        return 'beeee'
 
     return "fuk off"
