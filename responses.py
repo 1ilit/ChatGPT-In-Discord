@@ -1,8 +1,6 @@
 import random
 
 def handle_response(message):
-    print(message)
-
     if message == 'hello':
         return 'sup'
     

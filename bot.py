@@ -1,5 +1,6 @@
 import discord
 import responses
+from dotenv import dotenv_values
 
 async def send_message(message, user_message, is_private):
     try:
@@ -9,9 +10,9 @@ async def send_message(message, user_message, is_private):
         print(e)
 
 def run_discord_bot():
-    TOKEN = "key"
-    
-    client=discord.Client(intents=discord.Intents.all())
+    config = dotenv_values(".env")
+
+    client = discord.Client(intents=discord.Intents.all())
 
     @client.event
     async def on_ready():
@@ -30,6 +31,6 @@ def run_discord_bot():
 
         if user_message[0] == '$':
             user_message = user_message[1:]
-            await send_message(message, user_message, is_private=False)
+            await send_message(message, user_message, is_private = False)
 
-    client.run(TOKEN)
+    client.run(config["TOKEN"])
