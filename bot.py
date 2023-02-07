@@ -1,5 +1,7 @@
 import discord
 import responses
+import asyncio
+import math
 from io import StringIO
 from dotenv import dotenv_values
 
@@ -10,8 +12,41 @@ async def send_response_in_file(message, response, is_private):
     f = discord.File(buffer, filename = "response.txt")
     await message.channel.send(file = f)
 
+async def send_response_in_slide(message, response, is_private):
+    per_page = 800
+    pages = math.ceil(len(response) / per_page)
+    cur_page = 1
+    chunk = response[:per_page]
+    slide = await message.channel.send(f"```Page {cur_page}/{pages}:\n{chunk}```")
+    await slide.add_reaction("◀️")
+    await slide.add_reaction("▶️")
+    active = True
+
+    def check(reaction, user):
+        return user == message.author and str(reaction.emoji) in ["◀️", "▶️"]
+
+    while active:
+        try:
+            reaction, user = await client.wait_for("reaction_add", timeout = 60, check = check)
+        
+            if str(reaction.emoji) == "▶️" and cur_page != pages:
+                cur_page += 1
+                if cur_page != pages:
+                    chunk = response[(cur_page - 1) * per_page:cur_page * per_page]
+                else:
+                    chunk = response[(cur_page - 1) * per_page:]
+                await slide.edit(content = f"```Page {cur_page}/{pages}:\n\n{chunk}```")
+                await slide.remove_reaction(reaction, user)
+
+            elif str(reaction.emoji) == "◀️" and cur_page > 1:
+                cur_page -= 1
+                chunk = response[(cur_page - 1) * per_page:cur_page * per_page]
+                await slide.edit(content=f"```Page {cur_page}/{pages}:\n\n{chunk}```")
+                await slide.remove_reaction(reaction, user)
+        except asyncio.TimeoutError:
+            active = False
+
 async def handle_long_message(message, response, is_private):
-    valid_reactions=["1️⃣", "2️⃣"]
     embed = discord.Embed(
                 description = "The response is too long. \nDo you want it in the form of a file ( 1️⃣ ) or slides ( 2️⃣ )?",
                 color = discord.Colour.yellow()
@@ -22,18 +57,19 @@ async def handle_long_message(message, response, is_private):
     await warning.add_reaction("2️⃣")
 
     def check(reaction, user):
-        return user == message.author and str(reaction.emoji) in valid_reactions
+        return user == message.author and str(reaction.emoji) in ["1️⃣", "2️⃣"]
     
     reaction, user = await client.wait_for('reaction_add', timeout = 60.0, check = check)
     if str(reaction.emoji) == "1️⃣":
         await send_response_in_file(message, response, is_private)
     elif str(reaction.emoji) == "2️⃣":
-        await message.channel.send("dis is slide")
+        await send_response_in_slide(message, response, is_private)
 
 async def send_message(message, user_message, is_private):
     try:
-        response = "```" + responses.handle_response(user_message) + "```"
+        response = responses.handle_response(user_message)
         if len(response) < 2000:
+            response = "```" + response + "```"
             await message.author.send(response) if is_private else await message.channel.send(response) 
         else:
             await handle_long_message(message, response, is_private)
